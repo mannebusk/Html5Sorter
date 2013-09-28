@@ -94,8 +94,9 @@ var Html5Sorter = function(settings) {
      * Handler for when starting to drag element
      */
     that.dragStart = function(event) {
-        that.startIndex = indexOfNodeCollection(that.wrapper.children, event.target);
-        addClass(event.target, that.classes.dragging);
+        var el = that.findDragParent(event.target);
+        that.startIndex = indexOfNodeCollection(that.wrapper.children, el);
+        addClass(el, that.classes.dragging);
         that.callback('dragStart', event);
     }
 
@@ -103,7 +104,8 @@ var Html5Sorter = function(settings) {
      * Handler for stopping drag on element
      */
     that.dragEnd = function(event) {
-        removeClass(event.target, that.classes.dragging);
+        var el = that.findDragParent(event.target);
+        removeClass(el, that.classes.dragging);
         that.callback('dragEnd', event);
     }
 
@@ -180,6 +182,7 @@ var Html5Sorter = function(settings) {
     that.insert = function(element) {
         var dropIndex = indexOfNodeCollection(that.wrapper.children, element);
         var startElem = that.wrapper.children[that.startIndex];
+        console.log(that.startIndex);
 
         purge(startElem);
         that.wrapper.removeChild(startElem);
