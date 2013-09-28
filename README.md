@@ -5,12 +5,15 @@ Standalone drag and drop sorting using HTML5.
 
 Usage
 ----------
-  var sorter = new Html5Sorter({
-    selector: 'ul.sortable',
-    onDrop: function(event) {
-      // Do some stuff ...
-    }
-  });
+    var sorter = new Html5Sorter({
+      selector: '.myContainer',
+      onDrop: function(event) {
+        // Do some stuff ...
+      }
+    });
+The default behaviour is to insert element at drop position, 
+but you can also swap position with the elment dropped on by setting the option <b>swap</b> to <b>true</b>.
+    
 
 Event Callbacks
 ----------
