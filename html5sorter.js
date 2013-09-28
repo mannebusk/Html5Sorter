@@ -30,7 +30,7 @@ var Html5Sorter = function(settings) {
     // Html Classes 
     that.classes = {
         dragging: 'dragging',
-        dragover: 'drag-over',
+        dragover: 'drag-over'
     };
 
     /**
@@ -114,7 +114,8 @@ var Html5Sorter = function(settings) {
         if (event.preventDefault) {
             event.preventDefault();
         }
-        addClass(event.target, that.classes.dragover);
+        var el = that.findDragParent(event.target);
+        addClass(el, that.classes.dragover);
         that.callback('dragOver', event);
     }
 
@@ -122,19 +123,26 @@ var Html5Sorter = function(settings) {
      * Handler for leaving drag over 
      */
     that.dragLeave = function(event) {
-        removeClass(event.target, that.classes.dragover);
-        that.callback('dragLeave', event);
+        var el = that.findDragParent(event.target);
+            removeClass(el, that.classes.dragover);
+            that.callback('dragLeave', event);
     }
 
     /**
      * Handler for drop
      */
     that.drop = function(event) {
-        removeClass(event.target, that.classes.dragover);
+        var element = that.findDragParent(event.target);
+        if (event.preventDefault) {
+            event.preventDefault();
+        }
+
+        removeClass(element, that.classes.dragover);
+
         if (that.swapMode) {
-            that.swap(event.target);
+            that.swap(element);
         } else {
-            that.insert(event.target);
+            that.insert(element);
         }
         that.callback('drop', event);
     }
@@ -144,6 +152,26 @@ var Html5Sorter = function(settings) {
      */
     that.dragging = function(event) {
         that.callback('dragging', event);
+    }
+
+    /**
+     * Traverse upwards to find the draggable child of wrapper
+     *
+     * @param element
+     * @return element
+     */
+    that.findDragParent = function(element) {
+        if (element.draggable && element.nodeName !== 'IMG') {
+            return element;
+        }
+
+        while(element.parentNode) {
+            element = element.parentNode;
+            if (element.draggable && element.nodeName !== 'IMG') {
+                return element;
+                break;
+            }
+        }
     }
 
     /**
@@ -162,8 +190,8 @@ var Html5Sorter = function(settings) {
      * Swap image positions
      */
     that.swap = function(element) {
-        var dropIndex = indexOfNodeCollection(that.wrapper.children, element);
-        var startElem = that.wrapper.children[that.startIndex];
+        var dropIndex    = indexOfNodeCollection(that.wrapper.children, element);
+        var startElem    = that.wrapper.children[that.startIndex];
         var swapPosition = that.startIndex;
 
         if (that.startIndex > dropIndex) {
@@ -231,11 +259,11 @@ var Html5Sorter = function(settings) {
         var cls = element.getAttribute('class');
 
         if (cls) {
-            cls = cls.split(' ');
+            cls = cls.split(" ");
             if (cls.indexOf(name) === -1) {
                 cls.push(name);
             }
-            element.setAttribute('class', cls.join(' '));
+            element.setAttribute('class', cls.join(" "));
         } else {
             element.setAttribute('class', name);
         }
@@ -255,7 +283,7 @@ var Html5Sorter = function(settings) {
         var idx = cls.indexOf(name);
         if (idx > -1) {
             cls.splice(idx, 1);
-            element.setAttribute('class', cls)
+            element.setAttribute('class', cls.join(" "));
         }
     }
 
