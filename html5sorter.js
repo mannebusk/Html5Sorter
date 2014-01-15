@@ -53,12 +53,13 @@ var Html5Sorter = function(settings) {
            return; 
         }
         if (settings.hasOwnProperty('swap')) {
-            that.swapMode = settings.swap;
+            // Disabling Swap mode until it is fixed and working
+            // that.swapMode = settings.swap;
         }
 
         that.registerCallbacks();
-        that.elementSelector = settings.element;
-        that.wrapper = document.querySelector(settings.element);
+        that.elementSelector = settings.container;
+        that.wrapper = document.querySelector(that.elementSelector);
         that.register(that.wrapper.querySelectorAll(settings.selector));
     }
 
@@ -77,6 +78,7 @@ var Html5Sorter = function(settings) {
             element.addEventListener('dragover', that.dragOver, false);
             element.addEventListener('dragleave', that.dragLeave, false);
             element.addEventListener('drop', that.drop, false);
+
             if (element.children.length) {
                 that.register(element.children);
             }
@@ -113,7 +115,11 @@ var Html5Sorter = function(settings) {
         that.startIndex = indexOfNodeCollection(that.wrapper.children, event.target);
         that.dragElement = event.target;
         addClass(event.target, that.classes.dragging);
-        that.callback('dragStart', event.target);
+
+        var rootElement = document.querySelector(that.elementSelector);
+        var wholeTreeNode = elementToObject(rootElement);
+
+        that.callback('dragStart', event.target, [wholeTreeNode]);
     }
 
     /**
