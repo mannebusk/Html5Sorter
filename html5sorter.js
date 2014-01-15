@@ -27,10 +27,22 @@ var Html5Sorter = function(settings) {
     that = this;
     that.swapMode = false; // Swap mode instead of insert
 
+    // Constants for compareDocumentPosition()
+    var POSITION_SAME           = 0;
+    var POSITION_BEFORE         = 2;
+    var POSITION_AFTER          = 4;
+    var POSITION_PARENT         = 8;
+    var POSITION_PARENT_BEFORE  = 10;
+    var POSITION_PARENT_AFTER   = 12;
+    var POSITION_CHILD          = 16;
+    var POSITION_CHILD_BEFORE   = 18;
+    var POSITION_CHILD_AFTER    = 20;
+    var POSITION_NONE           = 32;
+
     // Html Classes 
     that.classes = {
         dragging: 'dragging',
-        dragover: 'drag-over'
+        dragover: 'drag-over',
     };
 
     /**
@@ -45,15 +57,16 @@ var Html5Sorter = function(settings) {
         }
 
         that.registerCallbacks();
-        that.wrapper = document.querySelector(settings.selector);
-        that.register();
+        that.elementSelector = settings.element;
+        that.wrapper = document.querySelector(settings.element);
+        that.register(that.wrapper.querySelectorAll(settings.selector));
     }
 
     /**
      * Register events
      */
-    that.register = function() {
-        each(that.wrapper.children, function(element) {
+    that.register = function(elements) {
+        each(elements, function(element) {
             // Make elements draggable
             element.setAttribute('draggable', 'true');
 
@@ -64,6 +77,9 @@ var Html5Sorter = function(settings) {
             element.addEventListener('dragover', that.dragOver, false);
             element.addEventListener('dragleave', that.dragLeave, false);
             element.addEventListener('drop', that.drop, false);
+            if (element.children.length) {
+                that.register(element.children);
+            }
         });
     }
 
@@ -94,19 +110,18 @@ var Html5Sorter = function(settings) {
      * Handler for when starting to drag element
      */
     that.dragStart = function(event) {
-        var el = that.findDragParent(event.target);
-        that.startIndex = indexOfNodeCollection(that.wrapper.children, el);
-        addClass(el, that.classes.dragging);
-        that.callback('dragStart', event);
+        that.startIndex = indexOfNodeCollection(that.wrapper.children, event.target);
+        that.dragElement = event.target;
+        addClass(event.target, that.classes.dragging);
+        that.callback('dragStart', event.target);
     }
 
     /**
      * Handler for stopping drag on element
      */
     that.dragEnd = function(event) {
-        var el = that.findDragParent(event.target);
-        removeClass(el, that.classes.dragging);
-        that.callback('dragEnd', event);
+        removeClass(event.target, that.classes.dragging);
+        that.callback('dragEnd', event.target);
     }
 
     /**
@@ -116,85 +131,77 @@ var Html5Sorter = function(settings) {
         if (event.preventDefault) {
             event.preventDefault();
         }
-        var el = that.findDragParent(event.target);
-        addClass(el, that.classes.dragover);
-        that.callback('dragOver', event);
+        addClass(event.target, that.classes.dragover);
+        that.callback('dragOver', event.target);
     }
 
     /**
      * Handler for leaving drag over 
      */
     that.dragLeave = function(event) {
-        var el = that.findDragParent(event.target);
-            removeClass(el, that.classes.dragover);
-            that.callback('dragLeave', event);
+        removeClass(event.target, that.classes.dragover);
+        that.callback('dragLeave', event.target);
     }
 
     /**
      * Handler for drop
      */
     that.drop = function(event) {
-        var element = that.findDragParent(event.target);
-        if (event.preventDefault) {
-            event.preventDefault();
-        }
-
-        removeClass(element, that.classes.dragover);
-
+        removeClass(event.target, that.classes.dragover);
         if (that.swapMode) {
-            that.swap(element);
+            that.swap(event.target);
         } else {
-            that.insert(element);
+            that.insert(event.target);
         }
-        that.callback('drop', event);
+        var rootElement = document.querySelector(that.elementSelector);
+        var wholeTreeNode = elementToObject(rootElement);
+
+        that.callback('drop', event.target, [wholeTreeNode]);
     }
 
     /**
      * Handler for dragging
      */
     that.dragging = function(event) {
-        that.callback('dragging', event);
+        that.callback('dragging', event.target);
     }
 
     /**
-     * Traverse upwards to find the draggable child of wrapper
+     * Insert dragged element at drop before/after drop element
      *
-     * @param element
-     * @return element
-     */
-    that.findDragParent = function(element) {
-        if (element.draggable && element.nodeName !== 'IMG') {
-            return element;
-        }
-
-        while(element.parentNode) {
-            element = element.parentNode;
-            if (element.draggable && element.nodeName !== 'IMG') {
-                return element;
-                break;
-            }
-        }
-    }
-
-    /**
-     * Remove dragged element and insert it again at drop position
      */
     that.insert = function(element) {
-        var dropIndex = indexOfNodeCollection(that.wrapper.children, element);
-        var startElem = that.wrapper.children[that.startIndex];
-        console.log(that.startIndex);
+        var startElem = that.dragElement; 
+        var compare = startElem.compareDocumentPosition(element);
 
-        purge(startElem);
-        that.wrapper.removeChild(startElem);
-        that.wrapper.insertBefore(startElem, that.wrapper.children[dropIndex]);
+        switch(compare) {
+            case POSITION_BEFORE:
+            case POSITION_PARENT:
+            case POSITION_PARENT_BEFORE:
+                element.parentNode.insertBefore(startElem, element);
+                break;
+            case POSITION_AFTER:
+            case POSITION_PARENT_AFTER:
+                element.parentNode.insertBefore(startElem, element.nextSibling);
+                break;
+            case POSITION_CHILD:
+            case POSITION_CHILD_BEFORE:
+            case POSITION_CHILD_AFTER:
+                // This is when drop element is inside start element node. If
+                // should be implemented all children inside of the node needs
+                // to be inserted at parent node.
+            default:
+                break;
+        }
+        that.dragElem = undefined;
     }
 
     /**
      * Swap image positions
      */
     that.swap = function(element) {
-        var dropIndex    = indexOfNodeCollection(that.wrapper.children, element);
-        var startElem    = that.wrapper.children[that.startIndex];
+        var dropIndex = indexOfNodeCollection(that.wrapper.children, element);
+        var startElem = that.wrapper.children[that.startIndex];
         var swapPosition = that.startIndex;
 
         if (that.startIndex > dropIndex) {
@@ -213,10 +220,14 @@ var Html5Sorter = function(settings) {
     /**
      * Call callback
      */
-    that.callback = function(name, event) {
+    that.callback = function(name, event, params) {
         if (that.hasOwnProperty('callbacks')) {
             if (that.callbacks.hasOwnProperty(name)) {
                 var fn = that.callbacks[name];
+                if (typeof params === 'object') {
+                    params.unshift(event);
+                    fn.apply(fn, params);
+                }
                 fn(event);
             }
         }
@@ -262,11 +273,11 @@ var Html5Sorter = function(settings) {
         var cls = element.getAttribute('class');
 
         if (cls) {
-            cls = cls.split(" ");
+            cls = cls.split(' ');
             if (cls.indexOf(name) === -1) {
                 cls.push(name);
             }
-            element.setAttribute('class', cls.join(" "));
+            element.setAttribute('class', cls.join(' '));
         } else {
             element.setAttribute('class', name);
         }
@@ -286,7 +297,7 @@ var Html5Sorter = function(settings) {
         var idx = cls.indexOf(name);
         if (idx > -1) {
             cls.splice(idx, 1);
-            element.setAttribute('class', cls.join(" "));
+            element.setAttribute('class', cls)
         }
     }
 
@@ -319,6 +330,31 @@ var Html5Sorter = function(settings) {
                 purge(d.childNodes[i]);
             }
         }
+    }
+
+    /**
+     * Get DOM element as object for conversion to JSON
+     */
+    function elementToObject(element, o) {
+        var el = element;
+        var o = {
+            tagName: el.tagName
+        };
+        var i = 0;
+        for (i ; i < el.attributes.length; i++) {
+            o[el.attributes[i].name] = el.attributes[i].value;
+        }
+
+        var children = el.children;
+        if (children.length) {
+            o.children = [];
+            i = 0;
+            for (i ; i < children.length; i++) {
+                child = children[i];
+                o.children[i] = elementToObject(child, o.children) ;
+            }
+        }
+        return o;
     }
 
     that.init(); // Trigger init

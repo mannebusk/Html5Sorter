@@ -3,17 +3,17 @@ Html5Sorter
 
 Standalone drag and drop sorting using HTML5.
 
+Works recursivley on child elements.
+
 Usage
 ----------
     var sorter = new Html5Sorter({
-      selector: '.myContainer',
-      onDrop: function(event) {
+      container: '.myContainer',
+      selector: 'li',
+      onDrop: function(elem, completeTree) {
         // Do some stuff ...
       }
     });
-The default behaviour is to insert element at drop position, 
-but you can also swap position with the elment dropped on by setting the option <b>swap</b> to <b>true</b>.
-    
 
 Event Callbacks
 ----------
